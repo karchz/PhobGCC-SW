@@ -18,7 +18,7 @@ using std::max;
 //#include "../teensy/Phob1_1Teensy4_0DiodeShort.h"// For PhobGCC board 1.1 with Teensy 4.0 and the diode shorted
 //#include "../teensy/Phob1_2Teensy4_0.h"          // For PhobGCC board 1.2.x with Teensy 4.0
 //#include "../rp2040/include/PicoProtoboard.h"    // For a protoboard with a Pico on it, used for developing for the RP2040
-//#include "../rp2040/include/Phob2_0.h"           // For PhobGCC Board 2.0 with RP2040
+#include "../rp2040/include/Phob2_0.h"           // For PhobGCC Board 2.0 with RP2040
 
 #include "structsAndEnums.h"
 #include "variables.h"
@@ -1729,6 +1729,14 @@ void processButtons(Pins &pin, Buttons &btn, Buttons &hardware, ControlConfig &c
 		tempBtn.Ra = (uint8_t) 0;
 	}
 
+    if(controls.safeMode){
+        if(tempBtn.Ra > (uint8_t) 0){
+            if(tempBtn.S != (uint8_t) (1)){
+                tempBtn.Z = (uint8_t) (1);
+            }
+        }
+    }
+
 	//Apply any further button remapping to tempBtn here
 
 	//Tournament toggle
@@ -2143,7 +2151,7 @@ void processButtons(Pins &pin, Buttons &btn, Buttons &hardware, ControlConfig &c
 	}
 }
 
-void readSticks(int readA, int readC, Buttons &btn, Pins &pin, RawStick &raw, const Buttons &hardware, const ControlConfig &controls, const FilterGains &normGains, const StickParams &aStickParams, const StickParams &cStickParams, float &dT, int &currentCalStep){
+void readSticks(int readA, int readC, Buttons &btn, Pins &pin, RawStick &raw, const Buttons &hardware, const ControlConfig &controls, const FilterGains &normGains, const StickParams &aStickParams, const StickParams &cStickParams, float &dT, int &currentCalStep, int x = 0, int y = 0){
 	readADCScale(_ADCScale, _ADCScaleFactor);
 
 	//on Arduino (and therefore Teensy), micros() overflows after about 71.58 minutes
@@ -2337,6 +2345,21 @@ void readSticks(int readA, int readC, Buttons &btn, Pins &pin, RawStick &raw, co
 			btn.Cy = (uint8_t) (remappedCy+_floatOrigin);
 		}
 	}
+
+    if(hardware.A != (uint8_t) 0 && hardware.R != (uint8_t) 0){
+        btn.Ax = _intOrigin;
+        btn.Ay = _intOrigin;
+    }
+
+    if(hardware.A != (uint8_t) 0 && hardware.Z != (uint8_t) 0){
+        btn.Ax = _intOrigin;
+        btn.Ay = _intOrigin;
+    }
+
+    if(hardware.L != (uint8_t) 0 && hardware.Y != (uint8_t) 0){
+        btn.Ax = x;
+        btn.Ay = y;
+    }
 };
 
 #endif //PHOBGCC_H
