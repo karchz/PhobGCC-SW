@@ -53,8 +53,27 @@ void second_core() {
 
 	extrasInit();
 
+    // values for circle loop
+    int x = 255;
+    int y = 255;
+    float angle = 0;
+    float angleIncrement = 0.05;
+    unsigned long previousMillis = 0;
+    unsigned long interval = 1;
 
 	while(true) { //main event loop
+
+        unsigned long currentMillis = millis();
+        if (currentMillis - previousMillis >= interval) {
+            previousMillis = currentMillis;
+            angle += angleIncrement;
+            if(angle > 6.283){
+                angle = 0;
+            }
+            x = 255 * cos(angle);
+            y = 255 * sin(angle);
+        }
+
 		//Set up persistent storage for calibration
 		static float tempCalPointsX[_noOfCalibrationPoints];
 		static float tempCalPointsY[_noOfCalibrationPoints];
@@ -710,7 +729,7 @@ void second_core() {
 		}
 		else if(running){
 			//if not calibrating read the sticks normally
-			readSticks(true,true, _btn, _pinList, _raw, _hardware, _controls, _normGains, _aStickParams, _cStickParams, _dT, _currentCalStep);
+			readSticks(true,true, _btn, _pinList, _raw, _hardware, _controls, _normGains, _aStickParams, _cStickParams, _dT, _currentCalStep, x, y);
 		}
 
 		//read the controller's buttons
