@@ -1735,6 +1735,11 @@ void processButtons(Pins &pin, Buttons &btn, Buttons &hardware, ControlConfig &c
                 tempBtn.Z = (uint8_t) (1);
             }
         }
+
+        if(tempBtn.La > (uint8_t) 0 && tempBtn.Y != (uint8_t) 0){
+            tempBtn.La = (uint8_t) (0);
+            tempBtn.Y = (uint8_t) (0);
+        }
     }
 
 	//Apply any further button remapping to tempBtn here
