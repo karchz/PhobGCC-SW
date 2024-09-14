@@ -1618,7 +1618,9 @@ void calibrationAdvance(ControlConfig &controls, int &currentCalStep, const Whic
 	}
 }
 
-void processButtons(Pins &pin, Buttons &btn, Buttons &hardware, ControlConfig &controls, FilterGains &gains, FilterGains &normGains, int &currentCalStep, bool &running, float tempCalPointsX[], float tempCalPointsY[], WhichStick &whichStick, NotchStatus notchStatus[], float notchAngles[], float measuredNotchAngles[], StickParams &aStickParams, StickParams &cStickParams){
+int _isYpressed = -1;
+
+void processButtons(Pins &pin, Buttons &btn, Buttons &hardware, ControlConfig &controls, FilterGains &gains, FilterGains &normGains, int &currentCalStep, bool &running, float tempCalPointsX[], float tempCalPointsY[], WhichStick &whichStick, NotchStatus notchStatus[], float notchAngles[], float measuredNotchAngles[], StickParams &aStickParams, StickParams &cStickParams, int &frameFlag){
 	//Gather the button data from the hardware
 	readButtons(pin, hardware);
 	hardware.La = (uint8_t) readLa(pin, controls.lTrigInitial, 1);
@@ -1739,7 +1741,19 @@ void processButtons(Pins &pin, Buttons &btn, Buttons &hardware, ControlConfig &c
         if(tempBtn.La > (uint8_t) 0 && tempBtn.Y != (uint8_t) 0){
             tempBtn.La = (uint8_t) (0);
             tempBtn.Y = (uint8_t) (0);
+        }else if(tempBtn.La == (uint8_t) 0 && tempBtn.Y != (uint8_t) 0){
+            // Ybutton IDJ
+            if(_isYpressed == -1){
+                _isYpressed = frameFlag;
+            }else{
+                if(_isYpressed != frameFlag){
+                    tempBtn.Y = (uint8_t) 0;
+                }
+            }
+        }else if(tempBtn.Y == (uint8_t) 0){
+            _isYpressed = -1;
         }
+
     }
 
 	//Apply any further button remapping to tempBtn here
@@ -2359,6 +2373,16 @@ void readSticks(int readA, int readC, Buttons &btn, Pins &pin, RawStick &raw, co
     if(hardware.A != (uint8_t) 0 && hardware.Z != (uint8_t) 0){
         btn.Ax = _intOrigin;
         btn.Ay = _intOrigin;
+    }
+
+    if(hardware.B != (uint8_t) 0 && hardware.R != (uint8_t) 0){
+        btn.Ax = _intOrigin;
+        // btn.Ay = _intOrigin;
+    }
+
+    if(hardware.B != (uint8_t) 0 && hardware.Z != (uint8_t) 0){
+        btn.Ax = _intOrigin;
+        // btn.Ay = _intOrigin;
     }
 
     if(hardware.L != (uint8_t) 0 && hardware.Y != (uint8_t) 0){

@@ -56,22 +56,35 @@ void second_core() {
     // values for circle loop
     int x = 255;
     int y = 255;
+    int frameFlag = 0;
     float angle = 0;
     float angleIncrement = 0.05;
     unsigned long previousMillis = 0;
+    unsigned long previousFrameMillis = 0;
     unsigned long interval = 1;
+    unsigned long frameInterval = 17;
 
 	while(true) { //main event loop
 
         unsigned long currentMillis = millis();
+
         if (currentMillis - previousMillis >= interval) {
-            previousMillis = currentMillis;
+            previousMillis = currentMillis; // previousMillisを更新
             angle += angleIncrement;
             if(angle > 6.283){
                 angle = 0;
             }
             x = 255 * cos(angle);
             y = 255 * sin(angle);
+        }
+
+        if (currentMillis - previousFrameMillis >= frameInterval) {
+            previousFrameMillis = currentMillis; // previousFrameMillisを更新
+            if(frameFlag == 0){
+                frameFlag = 1;
+            }else{
+                frameFlag = 0;
+            }
         }
 
 		//Set up persistent storage for calibration
@@ -733,7 +746,7 @@ void second_core() {
 		}
 
 		//read the controller's buttons
-		processButtons(_pinList, _btn, _hardware, _controls, _gains, _normGains, _currentCalStep, running, tempCalPointsX, tempCalPointsY, whichStick, notchStatus, notchAngles, measuredNotchAngles, _aStickParams, _cStickParams);
+		processButtons(_pinList, _btn, _hardware, _controls, _gains, _normGains, _currentCalStep, running, tempCalPointsX, tempCalPointsY, whichStick, notchStatus, notchAngles, measuredNotchAngles, _aStickParams, _cStickParams, frameFlag);
 
 	}
 }
