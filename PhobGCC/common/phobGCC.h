@@ -2365,12 +2365,18 @@ void readSticks(int readA, int readC, Buttons &btn, Pins &pin, RawStick &raw, co
 		}
 	}
 
-    if(hardware.A != (uint8_t) 0 && hardware.R != (uint8_t) 0){
+    // hardware は前フレームの値なので、ここで最新のボタン状態を直接読む
+    Buttons liveHardware;
+    readButtons(pin, liveHardware);
+
+    // A と R が同時に押されている間はスティックをニュートラル送信
+    if(liveHardware.A != (uint8_t) 0 && liveHardware.R != (uint8_t) 0){
         btn.Ax = _intOrigin;
         btn.Ay = _intOrigin;
     }
 
-    if(hardware.A != (uint8_t) 0 && hardware.Z != (uint8_t) 0){
+    // A と Z が同時に押されている間はスティックをニュートラル送信
+    if(liveHardware.A != (uint8_t) 0 && liveHardware.Z != (uint8_t) 0){
         btn.Ax = _intOrigin;
         btn.Ay = _intOrigin;
     }
