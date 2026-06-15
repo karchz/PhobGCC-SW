@@ -1691,6 +1691,28 @@ void processButtons(Pins &pin, Buttons &btn, Buttons &hardware, ControlConfig &c
 		tempBtn.La = (uint8_t) 0;
 	}
 
+	//L+Yレバガチャ(readSticks内のhardware.L&&hardware.Yによるスティック自動回転)を
+	//解除した直後はL単独入力が暴発しやすいため、約1.5秒間Lトリガーを無効化する。
+	//ロックアウト中でもL+Y両押し(=再ガチャ)はそのまま許可し、再度離せばロックアウトを開始し直す。
+	{
+		static bool lGachaPrev = false;
+		static unsigned long lGachaLockoutStart = 0;
+		static bool lGachaLockoutActive = false;
+		const bool lGachaActive = (hardware.L != (uint8_t) 0 && hardware.Y != (uint8_t) 0);
+		if(lGachaPrev && !lGachaActive){ //ガチャ解除の瞬間にロックアウト開始
+			lGachaLockoutStart = millis();
+			lGachaLockoutActive = true;
+		}
+		lGachaPrev = lGachaActive;
+		if(lGachaLockoutActive && (millis() - lGachaLockoutStart >= 1500)){
+			lGachaLockoutActive = false;
+		}
+		if(lGachaLockoutActive && !lGachaActive){ //再ガチャ中(L+Y)はカットしない
+			tempBtn.L  = (uint8_t) 0;
+			tempBtn.La = (uint8_t) 0;
+		}
+	}
+
 	switch(controls.rConfig) {
 		case 0: //Default Trigger state
 			tempBtn.Ra = (uint8_t) readRa(pin, controls.rTrigInitial, 1) * shutoffRa;
@@ -2369,6 +2391,42 @@ void readSticks(int readA, int readC, Buttons &btn, Pins &pin, RawStick &raw, co
     Buttons liveHardware;
     readButtons(pin, liveHardware);
 
+    //スマブラSPでCスティック攻撃を発生前ジャンプキャンセルすると、空中移行フレームで
+    //Aスティック方向にフォールバックして空中攻撃の方向を決める。Aが中央だと空Nに化ける。
+    //R/Z/Yいずれかのジャンプボタン立ち上がりエッジ時にCスティックが倒されていたら、
+    //その時のC方向をAスティックに4F(67ms = SPジャンプスクワット3F + 境界マージン1F)
+    //コピーして必ずC方向の空中攻撃で確定させる。
+    //この後でA+R/A+Z等の既存ニュートラル化が走るので、それらは引き続き優先される。
+    {
+        const int cMirrorThreshold = 23;
+        const bool cDeflectedForMirror = (abs((int)btn.Cx - _intOrigin) > cMirrorThreshold)
+                                      || (abs((int)btn.Cy - _intOrigin) > cMirrorThreshold);
+        static bool jumpPrevForMirror = false;
+        const bool jumpNowForMirror = (liveHardware.R != (uint8_t) 0
+                                    || liveHardware.Z != (uint8_t) 0
+                                    || liveHardware.Y != (uint8_t) 0);
+        const bool jumpRisingForMirror = !jumpPrevForMirror && jumpNowForMirror;
+        jumpPrevForMirror = jumpNowForMirror;
+        static uint8_t mirrorAx = (uint8_t) _intOrigin;
+        static uint8_t mirrorAy = (uint8_t) _intOrigin;
+        static unsigned long mirrorStart = 0;
+        static bool mirrorActive = false;
+        if(jumpRisingForMirror && cDeflectedForMirror){
+            mirrorAx = btn.Cx;
+            mirrorAy = btn.Cy;
+            mirrorStart = millis();
+            mirrorActive = true;
+        }
+        if(mirrorActive){
+            if(millis() - mirrorStart < 67){
+                btn.Ax = mirrorAx;
+                btn.Ay = mirrorAy;
+            } else {
+                mirrorActive = false;
+            }
+        }
+    }
+
     // A と R が同時に押されている間はスティックをニュートラル送信
     if(liveHardware.A != (uint8_t) 0 && liveHardware.R != (uint8_t) 0){
         btn.Ax = _intOrigin;
@@ -2394,6 +2452,33 @@ void readSticks(int readA, int readC, Buttons &btn, Pins &pin, RawStick &raw, co
     if(hardware.L != (uint8_t) 0 && hardware.Y != (uint8_t) 0){
         btn.Ax = x;
         btn.Ay = y;
+    }
+
+    //スマブラSPでジャンプ移行フレームとCスティック方向確定の時差により
+    //空中攻撃が空Nに化けるのを防ぐため、Cスティックが方向入力された後、
+    //中央付近に戻っても約2フレーム(33ms)は直前の方向を保持する。
+    //別方向への振り直し(中央経由しない切替)はそのまま通す。
+    {
+        const int cThreshold = 23; //SPの空中攻撃方向判定とほぼ同じ閾値
+        const bool cActive = (abs((int)btn.Cx - _intOrigin) > cThreshold)
+                          || (abs((int)btn.Cy - _intOrigin) > cThreshold);
+        static uint8_t cxLast = (uint8_t) _intOrigin;
+        static uint8_t cyLast = (uint8_t) _intOrigin;
+        static unsigned long cHoldStart = 0;
+        static bool cHoldActive = false;
+        if(cActive){
+            cxLast = btn.Cx;
+            cyLast = btn.Cy;
+            cHoldStart = millis();
+            cHoldActive = true;
+        } else if(cHoldActive){
+            if(millis() - cHoldStart < 33){
+                btn.Cx = cxLast;
+                btn.Cy = cyLast;
+            } else {
+                cHoldActive = false;
+            }
+        }
     }
 };
 
